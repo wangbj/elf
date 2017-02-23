@@ -666,12 +666,12 @@ getSymbolTableEntries e s =
 -- If the size is zero, or the offset larger than the 'elfSectionData',
 -- then 'Nothing' is returned.
 findSymbolDefinition :: ElfSymbolTableEntry -> Maybe B.ByteString
-findSymbolDefinition e =
-    let enclosingData = fmap elfSectionData (steEnclosingSection e)
-        start = fromIntegral (steValue e)
+findSymbolDefinition e = steEnclosingSection e >>= \enclosingSection ->
+    let enclosingData = elfSectionData enclosingSection
+        start = ( (fromIntegral (steValue e)) - (fromIntegral (elfSectionAddr enclosingSection) ) )
         len = fromIntegral (steSize e)
-        def = fmap (B.take len . B.drop start) enclosingData
-    in if def == Just B.empty then Nothing else def
+        def = (B.take len . B.drop start) enclosingData
+    in if B.null def then Nothing else Just def
 
 runGetMany :: Get a -> L.ByteString -> [a]
 runGetMany g bs
@@ -712,7 +712,7 @@ getSymbolTableEntry e strtlb =
     return $ EST (nameIdx,name) sec typ bind other sTlbIdx symVal size
 
 sectionByIndex :: Elf -> ElfSectionIndex -> Maybe ElfSection
-sectionByIndex e (SHNIndex i) = lookup i . zip [1..] $ (elfSections e)
+sectionByIndex e (SHNIndex i) = lookup i . zip [0..] $ (elfSections e)
 sectionByIndex _ _ = Nothing
 
 infoToTypeAndBind :: Word8 -> (ElfSymbolType,ElfSymbolBinding)
