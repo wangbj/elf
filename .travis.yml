@@ -1,5 +1,4 @@
 env:
- - CABALVER=1.16 GHCVER=7.0.4
  - CABALVER=1.16 GHCVER=7.4.2
  - CABALVER=1.18 GHCVER=7.6.3
  - CABALVER=1.18 GHCVER=7.8.3
@@ -21,22 +20,12 @@ install:
  - cabal --version
  - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
  - travis_retry cabal update
- - if [ "${GHCVER}" = "7.0.4" ]; then
-    cabal install --only-dependencies;
-   else
-    cabal install --only-dependencies --enable-tests;
-   fi
+ - cabal install --only-dependencies --enable-tests;
 
 script:
- - if [ "${GHCVER}" != "7.0.4" ]; then
-      cabal configure --enable-tests -v2;
-   else
-      cabal configure -v2;
-   fi
+ - cabal configure --enable-tests -v2;
  - cabal build
- - if [ "${GHCVER}" != "7.0.4" ]; then
-       cabal test;
-   fi;
+ - cabal test;
  - cabal check
  - cabal sdist
  - export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
