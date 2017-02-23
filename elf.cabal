@@ -9,7 +9,6 @@ Maintainer:    Baojun Wang <wangbj@gmail.com>
 Stability:     stable
 Cabal-Version: >= 1.6
 Homepage:      https://github.com/wangbj/elf
-Build-Depends: base, bytestring, binary
 Build-Type:    Custom
 Synopsis:      Parser for ELF object format.
 Description:   Parser for ELF object format.
