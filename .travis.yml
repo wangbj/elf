@@ -3,7 +3,8 @@ env:
  - CABALVER=1.16 GHCVER=7.4.2
  - CABALVER=1.18 GHCVER=7.6.3
  - CABALVER=1.18 GHCVER=7.8.3
- - CABALVER=1.22 GHCVER=7.10.1
+ - CABALVER=1.22 GHCVER=7.10.3
+ - CABALVER=1.24 GHCVER=8.0.2
  - CABALVER=head GHCVER=head
 
 matrix:
@@ -24,4 +25,25 @@ install:
     cabal install --only-dependencies;
    else
     cabal install --only-dependencies --enable-tests;
+   fi
+
+script:
+ - if [ "${GHCVER}" != "7.0.4" ]; then
+      cabal configure --enable-tests -v2;
+   else
+      cabal configure -v2;
+   fi
+ - cabal build
+ - if [ "${GHCVER}" != "7.0.4" ]; then
+       cabal test;
+   fi;
+ - cabal check
+ - cabal sdist
+ - export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
+   cd dist/;
+   if [ -f "$SRC_TGZ" ]; then
+      cabal install --force-reinstalls "$SRC_TGZ";
+   else
+      echo "expected '$SRC_TGZ' not found";
+      exit 1;
    fi
