@@ -1,24 +1,40 @@
-Name:          elf
-Version:       0.28
-License:       BSD3
-License-file:  LICENSE
-Category:      Data
-Author:        Erik Charlebois
-Copyright:     Erik Charlebois
-Maintainer:    Baojun Wang <wangbj@gmail.com>
-Stability:     stable
-Cabal-Version: >= 1.6
-Homepage:      https://github.com/wangbj/elf
-Build-Type:    Custom
-Synopsis:      Parser for ELF object format.
-Description:   Parser for ELF object format.
-Data-Files:    tests/empty.elf tests/Test.hs
+name:                elf
+version:             0.29
+license:             BSD3
+license-file:        LICENSE
+category:            Data
+author:              Erik Charlebois
+copyright:           Erik Charlebois
+maintainer:          Baojun Wang <wangbj@gmail.com>
+stability:           stable
+cabal-version:       >= 1.10
+homepage:            https://github.com/wangbj/elf
+build-type:          Simple
+synopsis:            Parser for ELF object format.
+description:         Parser for ELF object format.
+data-Files:          tests/empty.elf
+extra-source-files:  README.md
+
+library
+  hs-source-dirs:        src
+  exposed-modules:       Data.Elf
+  build-depends:         base >= 2 && < 5
+                       , bytestring
+                       , binary
+  default-language:      Haskell2010
+
+test-suite elf-test
+  type:                  exitcode-stdio-1.0
+  hs-source-dirs:        tests
+  main-is:               Test.hs
+  build-depends:         base
+                       , bytestring >= 0.10 && < 1
+                       , HUnit >= 1 && < 3
+                       , elf
+  ghc-options:           -threaded -rtsopts -with-rtsopts=-N
+  default-language:      Haskell2010
 
 source-repository head
   type:     git
   location: https://github.com/wangbj/elf.git
 
-library
-    build-depends:   base >= 2 && < 5, bytestring, binary
-    hs-source-dirs:  src
-    exposed-modules: Data.Elf
