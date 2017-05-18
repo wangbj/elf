@@ -1,5 +1,6 @@
 -- | Data.Elf  is a module for parsing a ByteString of an ELF file into an Elf record.
 module Data.Elf ( parseElf
+                , eitherParseElf
                 , parseSymbolTables
                 , findSymbolDefinition
                 , Elf(..)
@@ -19,8 +20,7 @@ module Data.Elf ( parseElf
                 , ElfSymbolBinding(..)
                 , ElfSectionIndex(..)) where
 
-import Data.Binary
-import Data.Binary.Get as G
+import Data.Serialize
 import Data.Bits
 import Data.Maybe
 import Data.Word
@@ -525,20 +525,21 @@ divide bs s n = let (x,y) = B.splitAt s bs in x : divide y s (n-1)
 
 -- | Parses a ByteString into an Elf record. Parse failures call error. 32-bit ELF objects have their
 -- fields promoted to 64-bit so that the 32- and 64-bit ELF records can be the same.
+eitherParseElf :: B.ByteString -> Either String Elf
+eitherParseElf b = do
+    (e, segTab, secTab, e_shstrndx) <- runGetLazy getElf_Ehdr (L.fromChunks [b])
+    let parseEntry p x                  = runGetLazy (p (elfClass e) (elfReader (elfData e))) (L.fromChunks [x])
+        ph                = table segTab
+        sh                = table secTab
+    (shstroff, shstrsize) <- parseEntry getElf_Shdr_OffsetSize $ head $ drop (fromIntegral e_shstrndx) sh
+    let sh_str            = B.take (fromIntegral shstrsize) $ B.drop (fromIntegral shstroff) b
+    segments          <- mapM (parseEntry (\c r -> parseElfSegmentEntry c r b)) ph
+    sections          <- mapM (parseEntry (\c r -> getElf_Shdr c r b sh_str)) sh
+    return $! e { elfSections = sections, elfSegments = segments }
+  where table i = divide (B.drop (tableOffset i) b) (entrySize i) (entryNum i)
+
 parseElf :: B.ByteString -> Elf
-parseElf b =
-    let ph                                             = table segTab
-        sh                                             = table secTab
-        (shstroff, shstrsize)                          = parseEntry getElf_Shdr_OffsetSize $ head $ drop (fromIntegral e_shstrndx) sh
-        sh_str                                         = B.take (fromIntegral shstrsize) $ B.drop (fromIntegral shstroff) b
-        segments                                       = map (parseEntry (\c r -> parseElfSegmentEntry c r b)) ph
-        sections                                       = map (parseEntry (\c r -> getElf_Shdr c r b sh_str)) sh
-    in e { elfSections = sections, elfSegments = segments }
-
-  where table i                         = divide (B.drop (tableOffset i) b) (entrySize i) (entryNum i)
-        parseEntry p x                  = runGet (p (elfClass e) (elfReader (elfData e))) (L.fromChunks [x])
-        (e, segTab, secTab, e_shstrndx) = runGet getElf_Ehdr $ L.fromChunks [b]
-
+parseElf = either error id . eitherParseElf
 
 data ElfSegment = ElfSegment
   { elfSegmentType      :: ElfSegmentType   -- ^ Segment type
@@ -674,9 +675,9 @@ findSymbolDefinition e = steEnclosingSection e >>= \enclosingSection ->
     in if B.null def then Nothing else Just def
 
 runGetMany :: Get a -> L.ByteString -> [a]
-runGetMany g bs
-    | L.length bs == 0 = []
-    | otherwise        = let (v,bs',_) = runGetState g bs 0 in v: runGetMany g bs'
+runGetMany g bs = case runGetLazy (getListOf g) bs of
+  Left _ -> []
+  Right xs -> xs
 
 symbolTableSections :: Elf -> [ElfSection]
 symbolTableSections e = filter ((== SHT_SYMTAB) . elfSectionType) (elfSections e)
