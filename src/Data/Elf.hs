@@ -528,7 +528,7 @@ divide bs s n = let (x,y) = B.splitAt s bs in x : divide y s (n-1)
 eitherParseElf :: B.ByteString -> Either String Elf
 eitherParseElf b = do
     (e, segTab, secTab, e_shstrndx) <- runGetLazy getElf_Ehdr (L.fromChunks [b])
-    let parseEntry p x                  = runGetLazy (p (elfClass e) (elfReader (elfData e))) (L.fromChunks [x])
+    let parseEntry p x    = runGetLazy (p (elfClass e) (elfReader (elfData e))) (L.fromChunks [x])
         ph                = table segTab
         sh                = table secTab
     (shstroff, shstrsize) <- parseEntry getElf_Shdr_OffsetSize $ head $ drop (fromIntegral e_shstrndx) sh
@@ -675,9 +675,9 @@ findSymbolDefinition e = steEnclosingSection e >>= \enclosingSection ->
     in if B.null def then Nothing else Just def
 
 runGetMany :: Get a -> L.ByteString -> [a]
-runGetMany g bs = case runGetLazy (getListOf g) bs of
+runGetMany g bs = case runGetLazyState g bs of
   Left _ -> []
-  Right xs -> xs
+  Right (x, bs') -> x : runGetMany g bs'
 
 symbolTableSections :: Elf -> [ElfSection]
 symbolTableSections e = filter ((== SHT_SYMTAB) . elfSectionType) (elfSections e)
