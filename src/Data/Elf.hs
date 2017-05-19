@@ -528,15 +528,16 @@ divide bs s n = let (x,y) = B.splitAt s bs in x : divide y s (n-1)
 eitherParseElf :: B.ByteString -> Either String Elf
 eitherParseElf b = do
     (e, segTab, secTab, e_shstrndx) <- runGetLazy getElf_Ehdr (L.fromChunks [b])
-    let parseEntry p x    = runGetLazy (p (elfClass e) (elfReader (elfData e))) (L.fromChunks [x])
+    let table i = divide (B.drop (tableOffset i) b) (entrySize i) (entryNum i)
+        parseEntry p x    = runGetLazy (p (elfClass e) (elfReader (elfData e))) (L.fromChunks [x])
         ph                = table segTab
         sh                = table secTab
-    (shstroff, shstrsize) <- parseEntry getElf_Shdr_OffsetSize $ head $ drop (fromIntegral e_shstrndx) sh
-    let sh_str            = B.take (fromIntegral shstrsize) $ B.drop (fromIntegral shstroff) b
     segments          <- mapM (parseEntry (\c r -> parseElfSegmentEntry c r b)) ph
-    sections          <- mapM (parseEntry (\c r -> getElf_Shdr c r b sh_str)) sh
-    return $! e { elfSections = sections, elfSegments = segments }
-  where table i = divide (B.drop (tableOffset i) b) (entrySize i) (entryNum i)
+    if null sh then return (e {elfSegments = segments}) else do
+      (shstroff, shstrsize) <- parseEntry getElf_Shdr_OffsetSize $ head $ drop (fromIntegral e_shstrndx) sh
+      let sh_str            = B.take (fromIntegral shstrsize) $ B.drop (fromIntegral shstroff) b
+      sections          <- mapM (parseEntry (\c r -> getElf_Shdr c r b sh_str)) sh
+      return $! e { elfSections = sections, elfSegments = segments }
 
 parseElf :: B.ByteString -> Elf
 parseElf = either error id . eitherParseElf
