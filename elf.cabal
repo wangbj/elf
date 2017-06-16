@@ -7,9 +7,9 @@ Author:        Erik Charlebois
 Copyright:     Erik Charlebois
 Maintainer:    Baojun Wang <wangbj@gmail.com>
 Stability:     stable
-Cabal-Version: >= 1.6
+Cabal-Version: >= 1.8
 Homepage:      https://github.com/wangbj/elf
-Build-Type:    Custom
+Build-Type:    Simple
 Synopsis:      Parser for ELF object format.
 Description:   Parser for ELF object format.
 Data-Files:    tests/empty.elf tests/Test.hs
@@ -22,3 +22,13 @@ library
     build-depends:   base >= 2 && < 5, bytestring, binary
     hs-source-dirs:  src
     exposed-modules: Data.Elf
+
+test-suite tests
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: tests
+  main-is:        Test.hs
+  build-depends:
+    elf,
+    HUnit,
+    base,
+    bytestring
