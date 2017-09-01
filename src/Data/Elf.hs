@@ -58,17 +58,15 @@ data ElfSection = ElfSection
 
 getElfMagic = do
     ei_magic <- liftM (map B.w2c) $ sequence [getWord8, getWord8, getWord8, getWord8]
-    if ei_magic /= "\DELELF" then
-        fail "Invalid magic number for ELF"
-     else
-        return ei_magic
+    if ei_magic /= "\DELELF"
+        then fail "Invalid magic number for ELF"
+        else return ei_magic
 
 getElfVersion = do
     ei_version <- getWord8
-    if ei_version /= 1 then
-        fail "Invalid version number for ELF"
-     else
-        return ei_version
+    if ei_version /= 1
+        then fail "Invalid version number for ELF"
+        else return ei_version
 
 data ElfSectionType
     = SHT_NULL          -- ^ Identifies an empty section header.
