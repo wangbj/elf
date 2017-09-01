@@ -112,9 +112,9 @@ getElfSectionFlags 2 word | testBit word 1     = SHF_ALLOC     : getElfSectionFl
 getElfSectionFlags 3 word | testBit word 2     = SHF_EXECINSTR : getElfSectionFlags 2 word
 getElfSectionFlags n word | testBit word (n-1) = SHF_EXT (n-1) : getElfSectionFlags (n-1) word
 getElfSectionFlags n word = getElfSectionFlags (n-1) word
-getElfSectionFlags32 = liftM (getElfSectionFlags 32) . getWord32 
+getElfSectionFlags32 = liftM (getElfSectionFlags 32) . getWord32
 getElfSectionFlags64 = liftM (getElfSectionFlags 64) . getWord64
-    
+
 data ElfClass
     = ELFCLASS32 -- ^ 32-bit ELF format
     | ELFCLASS64 -- ^ 64-bit ELF format
