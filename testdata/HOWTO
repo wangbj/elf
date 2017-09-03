@@ -1,0 +1,17 @@
+'tiny' was generated this way on a 64bit linux system:
+
+  $ nasm -f elf64 tiny.asm
+  $ gcc -o tiny tiny.o -nostartfiles -nostdlib -nodefaultlibs
+  $ strip -s tiny
+  $ strip --remove-section=.note.gnu.build-id tiny
+
+Thank you whoever wrote this tutorial: <http://timelessname.com/elfbin/>.
+
+'bloated' was generated this way on a 64bit linux system:
+
+  $ clang++ -m32 -o bloated bloated.cpp
+
+This HOWTO is provided for documentation purposes, elf should not be
+regenerated/changed because tests assert their content. Their content was read
+by the readelf utility command.
+

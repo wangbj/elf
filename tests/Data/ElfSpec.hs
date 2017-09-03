@@ -17,6 +17,8 @@ getBinaryFileContents fname = withBinaryFile fname ReadMode BS.hGetContents
 spec :: Spec
 spec = do
     emptyContents   <- runIO $ getBinaryFileContents "./testdata/empty"
+    tinyContents    <- runIO $ getBinaryFileContents "./testdata/tiny"
+    bloatedContents <- runIO $ getBinaryFileContents "./testdata/bloated"
 
     describe "parseElf" $ do
         -- TODO: That was the original only test in this package. This test
@@ -24,3 +26,32 @@ spec = do
         -- an 'Either ParseError Elf'.
         it "does not accept an empty elf" $
             evaluate (parseElf emptyContents) `shouldThrow` anyException
+
+        let tinyElf = parseElf tinyContents
+            bloatedElf = parseElf bloatedContents
+
+        context "Headers parsing" $ do
+
+            it "parses the version" $
+                elfVersion tinyElf `shouldBe` 1
+
+            it "parses the architecture" $ do
+                elfClass tinyElf    `shouldBe` ELFCLASS64
+                elfClass bloatedElf `shouldBe` ELFCLASS32
+
+            it "parses the endianness" $ do
+                elfData tinyElf `shouldBe` ELFDATA2LSB
+
+            it "parses the OS ABI" $
+                elfOSABI tinyElf `shouldBe` ELFOSABI_SYSV
+
+            it "parses the type" $
+                elfType bloatedElf `shouldBe` ET_EXEC
+
+            it "parses the machine type" $ do
+                elfMachine tinyElf    `shouldBe` EM_X86_64
+                elfMachine bloatedElf `shouldBe` EM_386
+
+            it "parses the entry point" $ do
+                elfEntry tinyElf    `shouldBe` 0x4000e0
+                elfEntry bloatedElf `shouldBe` 0x8048610
