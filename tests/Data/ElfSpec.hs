@@ -7,6 +7,8 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as C
 import Data.Either
 import Data.Foldable (find)
+import qualified Data.Map as Map
+import Data.Maybe
 import System.IO
 
 import Data.Elf
@@ -22,15 +24,15 @@ spec = do
     tinyContents    <- runIO $ getBinaryFileContents "./testdata/tiny"
     bloatedContents <- runIO $ getBinaryFileContents "./testdata/bloated"
 
+    let tinyElf = parseElf tinyContents
+        bloatedElf = parseElf bloatedContents
+
     describe "parseElf" $ do
         -- TODO: That was the original only test in this package. This test
         -- should be removed, and future versions of this library should return
         -- an 'Either ParseError Elf'.
         it "does not accept an empty elf" $
             evaluate (parseElf emptyContents) `shouldThrow` anyException
-
-        let tinyElf = parseElf tinyContents
-            bloatedElf = parseElf bloatedContents
 
         context "Headers parsing" $ do
 
@@ -98,3 +100,32 @@ spec = do
                                                  ]
                 in
                 fmap elfSectionData comment `shouldBe` Just expected
+
+    describe "findSymbolDefinition" $ do
+        let tinySymbols    = parseSymbolTables tinyElf
+            bloatedSymbols = parseSymbolTables bloatedElf
+
+        it "parses stripped symbol" $
+            -- This binary was stripped
+            concat tinySymbols `shouldSatisfy` all (isNothing . snd . steName)
+
+        let namedBloatedSymbols =
+                let go sym = fmap (\ name -> (name, sym)) $ snd (steName sym)
+                in Map.fromList $ catMaybes $ map go $ concat bloatedSymbols
+
+            member k = Map.member (C.pack k)
+            (!?) m k = m Map.!? (C.pack k)
+
+        it "parses symbol symbol names" $ do
+            namedBloatedSymbols `shouldSatisfy` member "_init"
+            namedBloatedSymbols `shouldSatisfy` member "main"
+
+        let initSymbol  = namedBloatedSymbols !? "_init"
+            fnameSymbol = namedBloatedSymbols !? "bloated.cpp"
+
+        it "parses symbol address" $
+            fmap steValue initSymbol `shouldBe` Just 0x0804850c
+
+        it "parses symbol type" $ do
+            fmap steType initSymbol  `shouldBe` Just STTFunc
+            fmap steType fnameSymbol `shouldBe` Just STTFile

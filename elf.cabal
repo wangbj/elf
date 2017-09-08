@@ -20,13 +20,14 @@ source-repository head
   location: https://github.com/wangbj/elf.git
 
 library
-    build-depends:   base >= 2 && < 5, bytestring, binary
-    hs-source-dirs:  src
-    exposed-modules: Data.Elf
+    build-depends:     base >= 2 && < 5, bytestring, binary
+    hs-source-dirs:    src
+    exposed-modules:   Data.Elf
 
 test-suite tests
-  type:           exitcode-stdio-1.0
-  hs-source-dirs: tests
-  main-is:        Spec.hs
-  other-modules:  Data.ElfSpec
-  build-depends:  elf, base, bytestring, hspec >= 2.4 && < 3
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      tests
+  main-is:             Spec.hs
+  other-modules:       Data.ElfSpec
+  build-depends:       elf, base, bytestring, hspec >= 2.4 && < 3
+                     , containers
