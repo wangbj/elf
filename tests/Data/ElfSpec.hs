@@ -55,3 +55,20 @@ spec = do
             it "parses the entry point" $ do
                 elfEntry tinyElf    `shouldBe` 0x4000e0
                 elfEntry bloatedElf `shouldBe` 0x8048610
+
+        context "Segment parsing" $ do
+            let tinySegments    = elfSegments tinyElf
+                bloatedSegments = elfSegments bloatedElf
+
+            it "parses the right amount of segments" $ do
+                length tinySegments    `shouldBe` 2
+                length bloatedSegments `shouldBe` 9
+
+            it "parses segment types" $
+                let segmentTypes = map elfSegmentType tinySegments in
+                segmentTypes `shouldBe` [PT_LOAD, PT_NOTE]
+
+            it "parses segment flags" $ do
+                let segmentFlags = map elfSegmentFlags tinySegments
+                segmentFlags !! 0 `shouldMatchList` [PF_R, PF_X]
+                segmentFlags !! 1 `shouldMatchList` [PF_R]
