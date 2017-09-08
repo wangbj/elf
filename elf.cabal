@@ -12,7 +12,9 @@ Homepage:           https://github.com/wangbj/elf
 Build-Type:         Simple
 Synopsis:           Parser for ELF object format.
 Description:        Parser for ELF object format.
-Extra-Source-Files: testdata/*
+Extra-Source-Files: testdata/tiny testdata/bloated testdata/HOWTO
+                    testdata/bloated.cpp testdata/tiny.asm
+                    testdata/empty
 
 
 source-repository head
