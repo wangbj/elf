@@ -4,7 +4,9 @@ import Test.Hspec
 
 import Control.Exception (evaluate)
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as C
 import Data.Either
+import Data.Foldable (find)
 import System.IO
 
 import Data.Elf
@@ -72,3 +74,27 @@ spec = do
                 let segmentFlags = map elfSegmentFlags tinySegments
                 segmentFlags !! 0 `shouldMatchList` [PF_R, PF_X]
                 segmentFlags !! 1 `shouldMatchList` [PF_R]
+
+        context "Section parsing" $ do
+            let tinySections    = elfSections tinyElf
+                bloatedSections = elfSections bloatedElf
+
+            it "parses the right amount of sections" $ do
+                length tinySections    `shouldBe` 3
+                length bloatedSections `shouldBe` 31
+
+            it "parses the section in the right order" $ do
+                map elfSectionName tinySections `shouldBe` [ "", ".text", ".shstrtab" ]
+
+            it "parses the section types" $
+                let sectionTypes = map elfSectionType bloatedSections in
+                take 5 sectionTypes `shouldBe` [ SHT_NULL, SHT_PROGBITS, SHT_NOTE
+                                               , SHT_NOTE, SHT_EXT 1879048182]
+
+            it "parses the data" $
+                let comment  = find (\sec -> elfSectionName sec == ".comment") bloatedSections
+                    expected = C.pack . concat $ [ "GCC: (GNU) 6.3.1 20161221 (Red Hat 6.3.1-1)\NUL"
+                                                 , "clang version 3.8.1 (tags/RELEASE_381/final)\NUL"
+                                                 ]
+                in
+                fmap elfSectionData comment `shouldBe` Just expected
