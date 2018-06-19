@@ -41,3 +41,4 @@ test-suite tests
                      , bytestring
                      , hspec >= 2.4 && < 3
                      , containers
+                     , elf
