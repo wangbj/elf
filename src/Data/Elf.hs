@@ -1,4 +1,4 @@
--- | Data.Elf  is a module for parsing a ByteString of an ELF file into an Elf record.
+-- | Data.Elf is a module for parsing a ByteString of an ELF file into an Elf record.
 module Data.Elf ( parseElf
                 , parseSymbolTables
                 , findSymbolDefinition
@@ -23,12 +23,11 @@ import Data.Binary
 import Data.Binary.Get as G
 import Data.Bits
 import Data.Maybe
-import Data.Word
-import Numeric
 import Control.Monad
-import qualified Data.ByteString          as B
-import qualified Data.ByteString.Internal as B
-import qualified Data.ByteString.Lazy     as L
+import qualified Data.ByteString               as B
+import qualified Data.ByteString.Internal      as B
+import qualified Data.ByteString.Lazy          as L
+import qualified Data.ByteString.Lazy.Internal as L
 
 data Elf = Elf
     { elfClass      :: ElfClass      -- ^ Identifies the class of the object file.
@@ -56,12 +55,17 @@ data ElfSection = ElfSection
     , elfSectionData      :: B.ByteString      -- ^ The raw data for the section.
     } deriving (Eq, Show)
 
+elfMagic :: [Word8]
+elfMagic = [0x7f, 0x45, 0x4c, 0x46] -- "\DELELF"
+
+getElfMagic :: Get [Word8]
 getElfMagic = do
-    ei_magic <- liftM (map B.w2c) $ sequence [getWord8, getWord8, getWord8, getWord8]
-    if ei_magic /= "\DELELF"
+    ei_magic <- replicateM 4 getWord8
+    if ei_magic /= elfMagic
         then fail "Invalid magic number for ELF"
         else return ei_magic
 
+getElfVersion :: Get Word8
 getElfVersion = do
     ei_version <- getWord8
     if ei_version /= 1
@@ -83,6 +87,8 @@ data ElfSectionType
     | SHT_DYNSYM        -- ^ Contains a dynamic loader symbol table
     | SHT_EXT Word32    -- ^ Processor- or environment-specific type
     deriving (Eq, Show)
+
+getElfSectionType :: ElfReader -> Get ElfSectionType
 getElfSectionType er = liftM getElfSectionType_ $ getWord32 er
     where getElfSectionType_ 0  = SHT_NULL
           getElfSectionType_ 1  = SHT_PROGBITS
@@ -104,12 +110,17 @@ data ElfSectionFlags
     | SHF_EXECINSTR -- ^ Section contains executable instructions
     | SHF_EXT Int   -- ^ Processor- or environment-specific flag
     deriving (Eq, Show)
+
+getElfSectionFlags :: Bits a => Int -> a -> [ElfSectionFlags]
 getElfSectionFlags 0 word = []
 getElfSectionFlags 1 word | testBit word 0     = SHF_WRITE     : getElfSectionFlags 0 word
 getElfSectionFlags 2 word | testBit word 1     = SHF_ALLOC     : getElfSectionFlags 1 word
 getElfSectionFlags 3 word | testBit word 2     = SHF_EXECINSTR : getElfSectionFlags 2 word
 getElfSectionFlags n word | testBit word (n-1) = SHF_EXT (n-1) : getElfSectionFlags (n-1) word
 getElfSectionFlags n word = getElfSectionFlags (n-1) word
+
+getElfSectionFlags32 :: ElfReader -> Get [ElfSectionFlags]
+getElfSectionFlags64 :: ElfReader -> Get [ElfSectionFlags]
 getElfSectionFlags32 = liftM (getElfSectionFlags 32) . getWord32
 getElfSectionFlags64 = liftM (getElfSectionFlags 64) . getWord64
 
@@ -117,6 +128,8 @@ data ElfClass
     = ELFCLASS32 -- ^ 32-bit ELF format
     | ELFCLASS64 -- ^ 64-bit ELF format
     deriving (Eq, Show)
+
+getElfClass :: Get ElfClass
 getElfClass = getWord8 >>= getElfClass_
     where getElfClass_ 1 = return ELFCLASS32
           getElfClass_ 2 = return ELFCLASS64
@@ -126,6 +139,8 @@ data ElfData
     = ELFDATA2LSB -- ^ Little-endian ELF format
     | ELFDATA2MSB -- ^ Big-endian ELF format
     deriving (Eq, Show)
+
+getElfData :: Get ElfData
 getElfData = getWord8 >>= getElfData_
     where getElfData_ 1 = return ELFDATA2LSB
           getElfData_ 2 = return ELFDATA2MSB
@@ -150,6 +165,8 @@ data ElfOSABI
     | ELFOSABI_STANDALONE -- ^ Standalone (embedded) application
     | ELFOSABI_EXT Word8  -- ^ Other
     deriving (Eq, Show)
+
+getElfOsabi :: Get ElfOSABI
 getElfOsabi = liftM getElfOsabi_ getWord8
     where getElfOsabi_ 0   = ELFOSABI_SYSV
           getElfOsabi_ 1   = ELFOSABI_HPUX
@@ -177,6 +194,8 @@ data ElfType
     | ET_CORE       -- ^ Core dump object file
     | ET_EXT Word16 -- ^ Other
     deriving (Eq, Show)
+
+getElfType :: ElfReader -> Get ElfType
 getElfType = liftM getElfType_ . getWord16
     where getElfType_ 0 = ET_NONE
           getElfType_ 1 = ET_REL
@@ -281,6 +300,8 @@ data ElfMachine
     | EM_UNICORE     -- ^ Microprocessor series from PKU-Unity Ltd. and MPRC of Peking University
     | EM_EXT Word16  -- ^ Other
     deriving (Eq, Show)
+
+getElfMachine :: ElfReader -> Get ElfMachine
 getElfMachine = liftM getElfMachine_ . getWord16
     where getElfMachine_ 0   = EM_NONE
           getElfMachine_ 1   = EM_M32
@@ -514,11 +535,13 @@ data ElfReader = ElfReader
     , getWord32 :: Get Word32
     , getWord64 :: Get Word64
     }
+
+elfReader :: ElfData -> ElfReader
 elfReader ELFDATA2LSB = ElfReader { getWord16 = getWord16le, getWord32 = getWord32le, getWord64 = getWord64le }
 elfReader ELFDATA2MSB = ElfReader { getWord16 = getWord16be, getWord32 = getWord32be, getWord64 = getWord64be }
 
 divide :: B.ByteString -> Int -> Int -> [B.ByteString]
-divide bs s 0 = []
+divide  _ _ 0 = []
 divide bs s n = let (x,y) = B.splitAt s bs in x : divide y s (n-1)
 
 -- | Parses a ByteString into an Elf record. Parse failures call error. 32-bit ELF objects have their
@@ -621,7 +644,7 @@ data ElfSegmentFlag
     deriving (Eq,Show)
 
 parseElfSegmentFlags :: Word32 -> [ElfSegmentFlag]
-parseElfSegmentFlags word = [ cvt bit | bit <- [ 0 .. 31 ], testBit word bit ]
+parseElfSegmentFlags word = [ cvt bit_ | bit_ <- [ 0 .. 31 ], testBit word bit_ ]
   where cvt 0 = PF_X
         cvt 1 = PF_W
         cvt 2 = PF_R
@@ -654,10 +677,32 @@ parseSymbolTables e =
 -- | Assumes the given section is a symbol table, type SHT_SYMTAB
 -- (guaranteed by parseSymbolTables).
 getSymbolTableEntries :: Elf -> ElfSection -> [ElfSymbolTableEntry]
-getSymbolTableEntries e s =
-    let link   = elfSectionLink s
-        strtab = lookup (fromIntegral link) (zip [0..] (elfSections e))
-    in runGetMany (getSymbolTableEntry e strtab) (L.fromChunks [elfSectionData s])
+getSymbolTableEntries e s = go decoder (L.fromChunks [elfSectionData s])
+  where
+    link   = elfSectionLink s
+    strtab = lookup (fromIntegral link) (zip [0..] (elfSections e))
+    decoder = runGetIncremental (getSymbolTableEntry e strtab)
+    go :: Decoder ElfSymbolTableEntry -> L.ByteString -> [ElfSymbolTableEntry]
+    go (Done leftover _ entry) input =
+      entry : go decoder (L.Chunk leftover input)
+    go (Partial k) input =
+      go (k . takeHeadChunk $ input) (dropHeadChunk input)
+    go (Fail _ _ msg) input = if L.null input
+                              then []
+                              else error msg
+
+takeHeadChunk :: L.ByteString -> Maybe B.ByteString
+takeHeadChunk lbs =
+  case lbs of
+    (L.Chunk bs _) -> Just bs
+    _ -> Nothing
+
+dropHeadChunk :: L.ByteString -> L.ByteString
+dropHeadChunk lbs =
+  case lbs of
+    (L.Chunk _ lbs') -> lbs'
+    _ -> L.Empty
+
 
 -- | Use the symbol offset and size to extract its definition
 -- (in the form of a ByteString).
@@ -666,15 +711,10 @@ getSymbolTableEntries e s =
 findSymbolDefinition :: ElfSymbolTableEntry -> Maybe B.ByteString
 findSymbolDefinition e = steEnclosingSection e >>= \enclosingSection ->
     let enclosingData = elfSectionData enclosingSection
-        start = ( (fromIntegral (steValue e)) - (fromIntegral (elfSectionAddr enclosingSection) ) )
+        start = (fromIntegral (steValue e)) - (fromIntegral (elfSectionAddr enclosingSection))
         len = fromIntegral (steSize e)
         def = (B.take len . B.drop start) enclosingData
     in if B.null def then Nothing else Just def
-
-runGetMany :: Get a -> L.ByteString -> [a]
-runGetMany g bs
-    | L.length bs == 0 = []
-    | otherwise        = let (v,bs',_) = runGetState g bs 0 in v: runGetMany g bs'
 
 symbolTableSections :: Elf -> [ElfSection]
 symbolTableSections e = filter ((== SHT_SYMTAB) . elfSectionType) (elfSections e)
@@ -684,7 +724,7 @@ getSymbolTableEntry :: Elf -> Maybe ElfSection -> Get ElfSymbolTableEntry
 getSymbolTableEntry e strtlb =
     if elfClass e == ELFCLASS32 then getSymbolTableEntry32 else getSymbolTableEntry64
   where
-  strs = fromMaybe B.empty (fmap elfSectionData strtlb)
+  strs = maybe B.empty elfSectionData strtlb
   er = elfReader (elfData e)
   getSymbolTableEntry32 = do
     nameIdx <- liftM fromIntegral (getWord32 er)
@@ -710,7 +750,7 @@ getSymbolTableEntry e strtlb =
     return $ EST (nameIdx,name) sec typ bind other sTlbIdx symVal size
 
 sectionByIndex :: Elf -> ElfSectionIndex -> Maybe ElfSection
-sectionByIndex e (SHNIndex i) = lookup i . zip [0..] $ (elfSections e)
+sectionByIndex e (SHNIndex i) = lookup i . zip [0..] $ elfSections e
 sectionByIndex _ _ = Nothing
 
 infoToTypeAndBind :: Word8 -> (ElfSymbolType,ElfSymbolBinding)
@@ -829,5 +869,3 @@ stringByIndex :: Integral n => n -> B.ByteString -> Maybe B.ByteString
 stringByIndex n strtab =
     let str = (B.takeWhile (/=0) . B.drop (fromIntegral n)) strtab
     in if B.length str == 0 then Nothing else Just str
-
-

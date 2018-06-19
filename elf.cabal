@@ -26,11 +26,12 @@ source-repository head
   location: https://github.com/wangbj/elf.git
 
 library
-    build-depends:     base >= 2 && < 5
+  build-depends:       base >= 2 && < 5
                      , bytestring
                      , binary
-    hs-source-dirs:    src
-    exposed-modules:   Data.Elf
+  hs-source-dirs:    src
+  exposed-modules:   Data.Elf
+  default-language:  Haskell2010
 
 test-suite tests
   type:                exitcode-stdio-1.0
@@ -42,3 +43,4 @@ test-suite tests
                      , hspec >= 2.4 && < 3
                      , containers
                      , elf
+  default-language:  Haskell2010
