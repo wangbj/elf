@@ -10,7 +10,7 @@ Stability:          stable
 Cabal-Version:      >= 1.10
 Homepage:           https://github.com/wangbj/elf
 Build-Type:         Simple
-Synopsis:           Parser for ELF object format.
+Synopsis:           An Elf parser
 Description:        Parser for ELF object format.
 Extra-Source-Files: testdata/tiny testdata/bloated testdata/HOWTO
                     testdata/bloated.cpp testdata/tiny.asm
