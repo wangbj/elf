@@ -1,34 +1,35 @@
-Name:          elf
-Version:       0.28
-License:       BSD3
-License-file:  LICENSE
-Category:      Data
-Author:        Erik Charlebois
-Copyright:     Erik Charlebois
-Maintainer:    Baojun Wang <wangbj@gmail.com>
-Stability:     stable
-Cabal-Version: >= 1.8
-Homepage:      https://github.com/wangbj/elf
-Build-Type:    Simple
-Synopsis:      Parser for ELF object format.
-Description:   Parser for ELF object format.
-Data-Files:    tests/empty.elf tests/Test.hs
+Name:               elf
+Version:            0.28
+License:            BSD3
+License-file:       LICENSE
+Category:           Data
+Author:             Erik Charlebois
+Copyright:          Erik Charlebois
+Maintainer:         Baojun Wang <wangbj@gmail.com>
+Stability:          stable
+Cabal-Version:      >= 1.8
+Homepage:           https://github.com/wangbj/elf
+Build-Type:         Simple
+Synopsis:           Parser for ELF object format.
+Description:        Parser for ELF object format.
+Extra-Source-Files: testdata/tiny testdata/bloated testdata/HOWTO
+                    testdata/bloated.cpp testdata/tiny.asm
+                    testdata/empty
+
 
 source-repository head
   type:     git
   location: https://github.com/wangbj/elf.git
 
 library
-    build-depends:   base >= 2 && < 5, bytestring, binary
-    hs-source-dirs:  src
-    exposed-modules: Data.Elf
+    build-depends:     base >= 2 && < 5, bytestring, binary
+    hs-source-dirs:    src
+    exposed-modules:   Data.Elf
 
 test-suite tests
-  type:           exitcode-stdio-1.0
-  hs-source-dirs: tests
-  main-is:        Test.hs
-  build-depends:
-    elf,
-    HUnit,
-    base,
-    bytestring
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      tests
+  main-is:             Spec.hs
+  other-modules:       Data.ElfSpec
+  build-depends:       elf, base, bytestring, hspec >= 2.4 && < 3
+                     , containers

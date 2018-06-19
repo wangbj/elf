@@ -58,17 +58,15 @@ data ElfSection = ElfSection
 
 getElfMagic = do
     ei_magic <- liftM (map B.w2c) $ sequence [getWord8, getWord8, getWord8, getWord8]
-    if ei_magic /= "\DELELF" then
-        fail "Invalid magic number for ELF"
-     else
-        return ei_magic
+    if ei_magic /= "\DELELF"
+        then fail "Invalid magic number for ELF"
+        else return ei_magic
 
 getElfVersion = do
     ei_version <- getWord8
-    if ei_version /= 1 then
-        fail "Invalid version number for ELF"
-     else
-        return ei_version
+    if ei_version /= 1
+        then fail "Invalid version number for ELF"
+        else return ei_version
 
 data ElfSectionType
     = SHT_NULL          -- ^ Identifies an empty section header.
@@ -112,9 +110,9 @@ getElfSectionFlags 2 word | testBit word 1     = SHF_ALLOC     : getElfSectionFl
 getElfSectionFlags 3 word | testBit word 2     = SHF_EXECINSTR : getElfSectionFlags 2 word
 getElfSectionFlags n word | testBit word (n-1) = SHF_EXT (n-1) : getElfSectionFlags (n-1) word
 getElfSectionFlags n word = getElfSectionFlags (n-1) word
-getElfSectionFlags32 = liftM (getElfSectionFlags 32) . getWord32 
+getElfSectionFlags32 = liftM (getElfSectionFlags 32) . getWord32
 getElfSectionFlags64 = liftM (getElfSectionFlags 64) . getWord64
-    
+
 data ElfClass
     = ELFCLASS32 -- ^ 32-bit ELF format
     | ELFCLASS64 -- ^ 64-bit ELF format
