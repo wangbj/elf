@@ -41,6 +41,6 @@ test-suite tests
   build-depends:       base
                      , bytestring
                      , hspec >= 2.4 && < 3
-                     , containers
+                     , containers >= 0.5.9.2
                      , elf
   default-language:  Haskell2010
