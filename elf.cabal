@@ -1,5 +1,5 @@
 Name:               elf
-Version:            0.29
+Version:            0.30
 License:            BSD3
 License-file:       LICENSE
 Category:           Data
@@ -17,7 +17,8 @@ Extra-Source-Files: testdata/tiny testdata/bloated testdata/HOWTO
                     testdata/empty
 
 tested-with:
-    GHC == 8.4.3
+    GHC == 8.6.2
+  , GHC == 8.4.4
   , GHC == 8.2.2
   , GHC == 8.0.2
 

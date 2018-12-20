@@ -674,7 +674,7 @@ parseSymbolTables e =
     let secs = symbolTableSections e
     in map (getSymbolTableEntries e) secs
 
--- | Assumes the given section is a symbol table, type SHT_SYMTAB
+-- | Assumes the given section is a symbol table, type SHT_SYMTAB, or SHT_DYNSYM
 -- (guaranteed by parseSymbolTables).
 getSymbolTableEntries :: Elf -> ElfSection -> [ElfSymbolTableEntry]
 getSymbolTableEntries e s = go decoder (L.fromChunks [elfSectionData s])
@@ -717,7 +717,7 @@ findSymbolDefinition e = steEnclosingSection e >>= \enclosingSection ->
     in if B.null def then Nothing else Just def
 
 symbolTableSections :: Elf -> [ElfSection]
-symbolTableSections e = filter ((== SHT_SYMTAB) . elfSectionType) (elfSections e)
+symbolTableSections e = filter ((`elem` [SHT_SYMTAB, SHT_DYNSYM]) . elfSectionType) (elfSections e)
 
 -- | Gets a single entry from the symbol table, use with runGetMany.
 getSymbolTableEntry :: Elf -> Maybe ElfSection -> Get ElfSymbolTableEntry

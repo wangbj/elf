@@ -23,9 +23,11 @@ spec = do
     emptyContents   <- runIO $ getBinaryFileContents "./testdata/empty"
     tinyContents    <- runIO $ getBinaryFileContents "./testdata/tiny"
     bloatedContents <- runIO $ getBinaryFileContents "./testdata/bloated"
+    dynsymContents  <- runIO $ getBinaryFileContents "./testdata/vdso.elf"
 
     let tinyElf = parseElf tinyContents
         bloatedElf = parseElf bloatedContents
+        dynsymElf  = parseElf dynsymContents
 
     describe "parseElf" $ do
         -- TODO: That was the original only test in this package. This test
@@ -129,3 +131,13 @@ spec = do
         it "parses symbol type" $ do
             fmap steType initSymbol  `shouldBe` Just STTFunc
             fmap steType fnameSymbol `shouldBe` Just STTFile
+    describe "parse DynSym symbols" $ do
+        let dynSymbols    = parseSymbolTables dynsymElf
+        it "parses dyn symbol table" $ do
+          dynSymbols `shouldNotBe` []
+        it "parse (x86_64) vdso dyn symbols" $ do
+          let dynSyms = concat dynSymbols
+          filter (\e -> (snd . steName) e == (Just . C.pack) "__vdso_time") dynSyms `shouldNotBe` []
+          filter (\e -> (snd . steName) e == (Just . C.pack) "__vdso_getcpu") dynSyms `shouldNotBe` []
+          filter (\e -> (snd . steName) e == (Just . C.pack) "__vdso_clock_gettime") dynSyms `shouldNotBe` []
+          filter (\e -> (snd . steName) e == (Just . C.pack) "__vdso_gettimeofday") dynSyms `shouldNotBe` []
