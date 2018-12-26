@@ -14,7 +14,7 @@ Synopsis:           An Elf parser
 Description:        Parser for ELF object format.
 Extra-Source-Files: testdata/tiny testdata/bloated testdata/HOWTO
                     testdata/bloated.cpp testdata/tiny.asm
-                    testdata/empty
+                    testdata/empty testdata/vdso
 
 tested-with:
     GHC == 8.6.2
