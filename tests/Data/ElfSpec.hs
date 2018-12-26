@@ -23,7 +23,7 @@ spec = do
     emptyContents   <- runIO $ getBinaryFileContents "./testdata/empty"
     tinyContents    <- runIO $ getBinaryFileContents "./testdata/tiny"
     bloatedContents <- runIO $ getBinaryFileContents "./testdata/bloated"
-    dynsymContents  <- runIO $ getBinaryFileContents "./testdata/vdso.elf"
+    dynsymContents  <- runIO $ getBinaryFileContents "./testdata/vdso"
 
     let tinyElf = parseElf tinyContents
         bloatedElf = parseElf bloatedContents
