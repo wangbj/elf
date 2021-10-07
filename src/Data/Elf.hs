@@ -2,18 +2,22 @@
 module Data.Elf ( parseElf
                 , parseSymbolTables
                 , findSymbolDefinition
+                  -- * Top-level header
                 , Elf(..)
-                , ElfSection(..)
-                , ElfSectionType(..)
-                , ElfSectionFlags(..)
-                , ElfSegment(..)
-                , ElfSegmentType(..)
-                , ElfSegmentFlag(..)
                 , ElfClass(..)
                 , ElfData(..)
                 , ElfOSABI(..)
                 , ElfType(..)
                 , ElfMachine(..)
+                  -- * Sections
+                , ElfSection(..)
+                , ElfSectionType(..)
+                , ElfSectionFlags(..)
+                  -- * Segments
+                , ElfSegment(..)
+                , ElfSegmentType(..)
+                , ElfSegmentFlag(..)
+                  -- * Symbols
                 , ElfSymbolTableEntry(..)
                 , ElfSymbolType(..)
                 , ElfSymbolBinding(..)
