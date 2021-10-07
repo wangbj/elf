@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 -- | Data.Elf is a module for parsing a ByteString of an ELF file into an Elf record.
 module Data.Elf ( parseElf
                 , parseSymbolTables
@@ -681,12 +683,18 @@ parseSymbolTables e =
 -- | Assumes the given section is a symbol table, type SHT_SYMTAB, or SHT_DYNSYM
 -- (guaranteed by parseSymbolTables).
 getSymbolTableEntries :: Elf -> ElfSection -> [ElfSymbolTableEntry]
-getSymbolTableEntries e s = go decoder (L.fromChunks [elfSectionData s])
+getSymbolTableEntries e s =
+    decodeMany (getSymbolTableEntry e strtab) (L.fromStrict (elfSectionData s))
   where
     link   = elfSectionLink s
     strtab = lookup (fromIntegral link) (zip [0..] (elfSections e))
-    decoder = runGetIncremental (getSymbolTableEntry e strtab)
-    go :: Decoder ElfSymbolTableEntry -> L.ByteString -> [ElfSymbolTableEntry]
+
+decodeMany :: forall a. Get a -> L.ByteString -> [a]
+decodeMany get = go decoder
+  where
+    decoder = runGetIncremental get
+
+    go :: Decoder a -> L.ByteString -> [a]
     go (Done leftover _ entry) input =
       entry : go decoder (L.Chunk leftover input)
     go (Partial k) input =
