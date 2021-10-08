@@ -1,28 +1,40 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 -- | Data.Elf is a module for parsing a ByteString of an ELF file into an Elf record.
 module Data.Elf ( parseElf
                 , parseSymbolTables
+                , parseRelocations
                 , findSymbolDefinition
+                  -- * Top-level header
                 , Elf(..)
-                , ElfSection(..)
-                , ElfSectionType(..)
-                , ElfSectionFlags(..)
-                , ElfSegment(..)
-                , ElfSegmentType(..)
-                , ElfSegmentFlag(..)
                 , ElfClass(..)
                 , ElfData(..)
                 , ElfOSABI(..)
                 , ElfType(..)
                 , ElfMachine(..)
+                  -- * Sections
+                , ElfSection(..)
+                , ElfSectionType(..)
+                , ElfSectionFlags(..)
+                  -- * Segments
+                , ElfSegment(..)
+                , ElfSegmentType(..)
+                , ElfSegmentFlag(..)
+                  -- * Symbols
                 , ElfSymbolTableEntry(..)
                 , ElfSymbolType(..)
                 , ElfSymbolBinding(..)
-                , ElfSectionIndex(..)) where
+                , ElfSectionIndex(..)
+                  -- * Relocations
+                , ElfRel(..)
+                , ElfRelocationSection(..)
+                ) where
 
 import Data.Binary
 import Data.Binary.Get as G
 import Data.Bits
 import Data.Maybe
+import Data.Int
 import Control.Monad
 import qualified Data.ByteString               as B
 import qualified Data.ByteString.Internal      as B
@@ -677,12 +689,18 @@ parseSymbolTables e =
 -- | Assumes the given section is a symbol table, type SHT_SYMTAB, or SHT_DYNSYM
 -- (guaranteed by parseSymbolTables).
 getSymbolTableEntries :: Elf -> ElfSection -> [ElfSymbolTableEntry]
-getSymbolTableEntries e s = go decoder (L.fromChunks [elfSectionData s])
+getSymbolTableEntries e s =
+    decodeMany (getSymbolTableEntry e strtab) (L.fromStrict (elfSectionData s))
   where
     link   = elfSectionLink s
     strtab = lookup (fromIntegral link) (zip [0..] (elfSections e))
-    decoder = runGetIncremental (getSymbolTableEntry e strtab)
-    go :: Decoder ElfSymbolTableEntry -> L.ByteString -> [ElfSymbolTableEntry]
+
+decodeMany :: forall a. Get a -> L.ByteString -> [a]
+decodeMany get = go decoder
+  where
+    decoder = runGetIncremental get
+
+    go :: Decoder a -> L.ByteString -> [a]
     go (Done leftover _ entry) input =
       entry : go decoder (L.Chunk leftover input)
     go (Partial k) input =
@@ -869,3 +887,61 @@ stringByIndex :: Integral n => n -> B.ByteString -> Maybe B.ByteString
 stringByIndex n strtab =
     let str = (B.takeWhile (/=0) . B.drop (fromIntegral n)) strtab
     in if B.length str == 0 then Nothing else Just str
+
+data ElfRel = ElfRel
+    { elfRelOffset    :: Word64
+    , elfRelSymbol    :: Word64
+    , elfRelType      :: Word8
+    , elfRelSymAddend :: Maybe Int64
+    } deriving (Eq, Show)
+
+getElfRel :: ElfClass
+          -> ElfReader
+          -> Bool   -- ^ explicit addend?
+          -> Get ElfRel
+getElfRel ELFCLASS64 er explicit = do
+    offset <- getWord64 er
+    info <- getWord64 er
+    addend <- if explicit then Just <$> getWord64 er else pure Nothing
+    return ElfRel { elfRelOffset    = offset
+                  , elfRelSymbol    = fromIntegral (info `shiftR` 32)
+                  , elfRelType      = fromIntegral info
+                  , elfRelSymAddend = fromIntegral <$> addend
+                  }
+getElfRel ELFCLASS32 er explicit = do
+    offset <- getWord32 er
+    info <- getWord32 er
+    addend <- if explicit then Just <$> getWord32 er else pure Nothing
+    return ElfRel { elfRelOffset    = fromIntegral offset
+                  , elfRelSymbol    = fromIntegral (info `shiftR` 8)
+                  , elfRelType      = fromIntegral info
+                  , elfRelSymAddend = fromIntegral <$> addend
+                  }
+
+getRelocations :: ElfClass -> ElfReader -> ElfSection -> [ElfRel]
+getRelocations elf_class er s =
+    decodeMany (getElfRel elf_class er explicit) (L.fromStrict (elfSectionData s))
+  where
+    explicit = elfSectionType s == SHT_RELA
+
+data ElfRelocationSection = ElfRelocationSection
+    { elfRelSectSymbolTable :: [ElfSymbolTableEntry]
+    , elfRelSectRelocated   :: ElfSection
+    , elfRelSectRelocations :: [ElfRel]
+    } deriving (Eq, Show)
+
+parseRelocations :: Elf -> [ElfRelocationSection]
+parseRelocations elf =
+    [ ElfRelocationSection { elfRelSectSymbolTable = symtab
+                           , elfRelSectRelocated   = relocated
+                           , elfRelSectRelocations = rels
+                           }
+    | s <- elfSections elf
+    , elfSectionType s `elem` [SHT_REL, SHT_RELA]
+    , let symtab = getSymbolTableEntries elf (getSection (elfSectionLink s))
+          relocated = getSection (elfSectionInfo s)
+          rels = getRelocations (elfClass elf) er s
+    ]
+  where
+    getSection i = elfSections elf !! fromIntegral i
+    er = elfReader (elfData elf)
