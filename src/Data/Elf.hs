@@ -65,6 +65,7 @@ data ElfSection = ElfSection
     , elfSectionAddrAlign :: Word64            -- ^ Contains the required alignment of the section. Must be a power of two.
     , elfSectionEntSize   :: Word64            -- ^ Size of entries if section has a table.
     , elfSectionData      :: B.ByteString      -- ^ The raw data for the section.
+    , elfSectionOffset    :: Word64            -- ^ Offset of the section in the file image.
     } deriving (Eq, Show)
 
 elfMagic :: [Word8]
@@ -449,6 +450,7 @@ getElf_Shdr ei_class er elf_file string_section =
                 , elfSectionAddrAlign = fromIntegral sh_addralign
                 , elfSectionEntSize   = fromIntegral sh_entsize
                 , elfSectionData      = B.take (fromIntegral sh_size) $ B.drop (fromIntegral sh_offset) elf_file
+                , elfSectionOffset    = fromIntegral sh_offset
                 }
         ELFCLASS64 -> do
             sh_name      <- getWord32 er
@@ -472,6 +474,7 @@ getElf_Shdr ei_class er elf_file string_section =
                 , elfSectionAddrAlign = sh_addralign
                 , elfSectionEntSize   = sh_entsize
                 , elfSectionData      = B.take (fromIntegral sh_size) $ B.drop (fromIntegral sh_offset) elf_file
+                , elfSectionOffset    = fromIntegral sh_offset
                 }
 
 data TableInfo = TableInfo { tableOffset :: Int, entrySize :: Int, entryNum :: Int }
@@ -581,6 +584,8 @@ data ElfSegment = ElfSegment
   , elfSegmentAlign     :: Word64           -- ^ Segment alignment
   , elfSegmentData      :: B.ByteString     -- ^ Data for the segment
   , elfSegmentMemSize   :: Word64           -- ^ Size in memory  (may be larger then the segment's data)
+  , elfSegmentFileSize  :: Word64           -- ^ Size of the segment in file
+  , elfSegmentOffset    :: Word64           -- ^ Offset of the segment in file
   } deriving (Eq,Show)
 
 -- | Segment Types.
@@ -627,6 +632,8 @@ parseElfSegmentEntry elf_class er elf_file = case elf_class of
        , elfSegmentAlign    = p_align
        , elfSegmentData     = B.take (fromIntegral p_filesz) $ B.drop (fromIntegral p_offset) elf_file
        , elfSegmentMemSize  = p_memsz
+       , elfSegmentFileSize = fromIntegral p_filesz
+       , elfSegmentOffset   = fromIntegral p_offset
        }
 
   ELFCLASS32 -> do
@@ -646,6 +653,8 @@ parseElfSegmentEntry elf_class er elf_file = case elf_class of
        , elfSegmentAlign    = p_align
        , elfSegmentData     = B.take (fromIntegral p_filesz) $ B.drop (fromIntegral p_offset) elf_file
        , elfSegmentMemSize  = p_memsz
+       , elfSegmentFileSize = fromIntegral p_filesz
+       , elfSegmentOffset   = fromIntegral p_offset
        }
 
 data ElfSegmentFlag
